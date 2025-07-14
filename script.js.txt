@@ -1,0 +1,61 @@
+const video = document.getElementById('video');
+const canvas = document.getElementById('canvas');
+const status = document.getElementById('status');
+const captureBtn = document.getElementById('capture');
+
+// Replace with your Google Apps Script Web App URL
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyshd0220WUL0-K1xUbp9Xr3yoXn3y93gvPoItzbm8GI1FIejsRpG-LaCocRDXqD_Ma7w/exec
+";
+
+Promise.all([
+  faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights')
+]).then(startVideo).catch(err => {
+  status.textContent = 'Model load failed: ' + err.message;
+});
+
+async function startVideo() {
+  status.textContent = 'Starting camera...';
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+    video.srcObject = stream;
+    video.onplay = detectFace;
+  } catch (e) {
+    status.textContent = 'Camera error: ' + e.message;
+  }
+}
+
+async function detectFace() {
+  const detection = await faceapi.detectSingleFace(video, new faceapi.TinyFaceDetectorOptions());
+  if (detection) {
+    status.textContent = '✅ Face detected! You may capture.';
+    captureBtn.disabled = false;
+  } else {
+    status.textContent = '❌ No face detected yet.';
+    captureBtn.disabled = true;
+  }
+  setTimeout(detectFace, 500);
+}
+
+captureBtn.onclick = () => {
+  const ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+  const imageData = canvas.toDataURL('image/jpeg');
+
+  status.textContent = 'Uploading...';
+  fetch(GAS_WEBAPP_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ image: imageData })
+  })
+  .then(res => res.json())
+  .then(data => {
+    if (data.status === 'success') {
+      status.innerHTML = `✅ Uploaded! <a href="${data.fileUrl}" target="_blank">View Image</a>`;
+    } else {
+      status.textContent = 'Upload failed: ' + data.message;
+    }
+  })
+  .catch(err => {
+    status.textContent = 'Upload error: ' + err.message;
+  });
+};
