@@ -3,9 +3,8 @@ const canvas = document.getElementById('canvas');
 const status = document.getElementById('status');
 const captureBtn = document.getElementById('capture');
 
-// Replace with your Google Apps Script Web App URL
-const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyshd0220WUL0-K1xUbp9Xr3yoXn3y93gvPoItzbm8GI1FIejsRpG-LaCocRDXqD_Ma7w/exec
-";
+// ✅ Use GET instead of POST for CORS-safe call
+const GAS_WEBAPP_URL = "https://script.google.com/macros/s/AKfycbyshd0220WUL0-K1xUbp9Xr3yoXn3y93gvPoItzbm8GI1FIejsRpG-LaCocRDXqD_Ma7w/exec";
 
 Promise.all([
   faceapi.nets.tinyFaceDetector.loadFromUri('https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/weights')
@@ -42,20 +41,18 @@ captureBtn.onclick = () => {
   const imageData = canvas.toDataURL('image/jpeg');
 
   status.textContent = 'Uploading...';
-  fetch(GAS_WEBAPP_URL, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ image: imageData })
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.status === 'success') {
-      status.innerHTML = `✅ Uploaded! <a href="${data.fileUrl}" target="_blank">View Image</a>`;
-    } else {
-      status.textContent = 'Upload failed: ' + data.message;
-    }
-  })
-  .catch(err => {
-    status.textContent = 'Upload error: ' + err.message;
-  });
+
+  // ✅ Use GET method with query param
+  fetch(`${GAS_WEBAPP_URL}?img=${encodeURIComponent(imageData)}`)
+    .then(res => res.json())
+    .then(data => {
+      if (data.status === 'success') {
+        status.innerHTML = `✅ Uploaded! <a href="${data.fileUrl}" target="_blank">View Image</a>`;
+      } else {
+        status.textContent = 'Upload failed: ' + data.message;
+      }
+    })
+    .catch(err => {
+      status.textContent = 'Upload error: ' + err.message;
+    });
 };
